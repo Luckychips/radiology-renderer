@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cornerstonejs/core": "^4.18.4",
+    "@cornerstonejs/dicom-image-loader": "^4.18.4",
+    "@cornerstonejs/tools": "^4.18.4",
+    "@originjs/vite-plugin-commonjs": "^1.0.3",
     "@tailwindcss/vite": "^4.2.1",
+    "dicom-parser": "^1.8.21",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
