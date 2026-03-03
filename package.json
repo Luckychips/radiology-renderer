@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "cornerstone-core": "^2.6.1",
+    "cornerstone-tools": "^6.0.10",
+    "cornerstone-wado-image-loader": "^4.13.2",
+    "dicom-parser": "^1.8.21",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
