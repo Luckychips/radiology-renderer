@@ -1,4 +1,5 @@
 let initializedCornerstone: Promise<any> | null = null
+let isCornerstoneToolsRegistered = false
 
 export const setupCornerstone = async () => {
     if (initializedCornerstone) return initializedCornerstone
@@ -11,6 +12,13 @@ export const setupCornerstone = async () => {
         await cornerstone.init()
         await cornerstoneTools.init()
         dicomImageLoader.init()
+
+        if (!isCornerstoneToolsRegistered) {
+            cornerstoneTools.addTool(cornerstoneTools.PanTool)
+            cornerstoneTools.addTool(cornerstoneTools.ZoomTool)
+            cornerstoneTools.addTool(cornerstoneTools.StackScrollTool)
+            isCornerstoneToolsRegistered = true
+        }
 
         return { cornerstone, cornerstoneTools, dicomImageLoader }
     })()
