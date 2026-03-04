@@ -1,80 +1,51 @@
-import { useEffect, useRef } from 'react'
+import { type ChangeEvent, useEffect, useRef } from 'react'
+import { setupCornerstone } from '@/cores/setup'
 
 export default function Viewer() {
-    const elementRef = useRef<HTMLDivElement>(null);
+    const elementRef = useRef<HTMLDivElement>(null)
+    const renderingEngineRef = useRef<any>(null)
+    const dicomLoaderRef = useRef<any>(null)
+    const viewportId = 'viewport'
 
-    async function init() {
-        const cornerstone = await import('@cornerstonejs/core')
-        const cornerstoneTools = await import('@cornerstonejs/tools')
-        const dicomImageLoader = await import('@cornerstonejs/dicom-image-loader')
-        const { RenderingEngine, Enums, init: coreInit } = cornerstone;
+    const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files
+        if (!files) return
 
-        const {
-            init: toolsInit,
-            addTool,
-            PanTool,
-            ZoomTool,
-            StackScrollTool,
-            ToolGroupManager,
-        } = cornerstoneTools;
-
-        await coreInit();
-        await toolsInit();
-        dicomImageLoader.init();
-
-        const renderingEngineId = "engine";
-        const viewportId = "viewport";
-
-        const renderingEngine = new RenderingEngine(
-            renderingEngineId
-        );
-
-        renderingEngine.setViewports([
-            {
-                viewportId,
-                type: Enums.ViewportType.STACK,
-                element: elementRef.current!,
-            },
-        ]);
-
-        addTool(PanTool)
-        addTool(ZoomTool)
-        addTool(StackScrollTool)
-
-        const toolGroup = ToolGroupManager.createToolGroup('toolGroup')
-        toolGroup?.addTool(PanTool.toolName)
-        toolGroup?.addTool(ZoomTool.toolName)
-        toolGroup?.addTool(StackScrollTool.toolName)
-        toolGroup?.setToolActive(StackScrollTool.toolName)
-        toolGroup?.addViewport(viewportId, renderingEngineId)
-
-        const input = document.getElementById('fileInput') as HTMLInputElement
-        input.onchange = async (e: any) => {
-            const files = e.target.files;
-            if (!files) return;
-
-            const imageIds: string[] = [];
-
-            for (let i = 0; i < files.length; i++) {
-                const imageId = dicomImageLoader.wadouri.fileManager.add(files[i])
-                imageIds.push(imageId)
-            }
-
-            const viewport: any = renderingEngine.getViewport(viewportId)
-            await viewport.setStack(imageIds)
-            viewport.render()
+        const imageIds: string[] = []
+        for (let i = 0; i < files.length; i++) {
+            const imageId = dicomLoaderRef.current.wadouri.fileManager.add(files[i])
+            imageIds.push(imageId)
         }
+
+        const viewport: any = renderingEngineRef.current.getViewport(viewportId)
+        await viewport.setStack(imageIds)
+        viewport.render()
     }
 
     useEffect(() => {
         (async () => {
-            await init()
-        })();
-    }, []);
+            const { cornerstone, dicomImageLoader } = await setupCornerstone()
+            const { RenderingEngine, Enums } = cornerstone
+            dicomLoaderRef.current = dicomImageLoader
+            const renderingEngine = new RenderingEngine('engine')
+            renderingEngineRef.current = renderingEngine
+            renderingEngine.setViewports([
+                {
+                    viewportId,
+                    type: Enums.ViewportType.STACK,
+                    element: elementRef.current!,
+                },
+            ])
+        })()
+
+        return () => {
+            renderingEngineRef.current?.destroy()
+        }
+    }, [])
 
     return (
         <section>
-            <input type="file" id="fileInput" multiple accept=".dcm" />
+            <input type="file" id="fileInput" multiple accept=".dcm" onChange={onChange} />
             <div
                 ref={elementRef}
                 style={{
