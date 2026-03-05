@@ -1,1 +1,3 @@
+export { default as Axial } from './Axial'
+export { default as Coronal } from './Coronal'
 export { default as Viewer } from './Viewer'

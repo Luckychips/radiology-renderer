@@ -1,94 +1,48 @@
-import { type ChangeEvent, useEffect, useRef } from 'react'
+import { type ChangeEvent, useState, useEffect, useRef } from 'react'
 import { setupCornerstone } from '@/cores/setup'
+import { Axial, Coronal } from '@/components'
 
 export default function Viewer() {
-    const elementRef = useRef<HTMLDivElement>(null)
-    const renderingEngineRef = useRef<any>(null)
     const dicomLoaderRef = useRef<any>(null)
-    const toolGroupRef = useRef<any>(null)
-    const viewportId = 'viewport'
+    const [cs, setCs] = useState<any>(null)
+    const [ct, setCt] = useState<any>(null)
+    const [imageIds, setImageIds] = useState<string[]>([])
 
     const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files
         if (!files) return
 
-        const imageIds: string[] = []
+        const ids: string[] = []
         for (let i = 0; i < files.length; i++) {
             const imageId = dicomLoaderRef.current.wadouri.fileManager.add(files[i])
-            imageIds.push(imageId)
+            ids.push(imageId)
         }
 
-        const viewport: any = renderingEngineRef.current.getViewport(viewportId)
-        await viewport.setStack(imageIds)
-        viewport.resetCamera(true)
-        viewport.render()
-
-        // console.log(viewport.getCamera().focalPoint)
-        // const id = viewport.getImageData()
-        //
-        // console.log('origin:', id.origin)
-        // console.log('dimensions:', id.dimensions)
-        // console.log('spacing:', id.spacing)
+        setImageIds(ids)
     }
 
     useEffect(() => {
         (async () => {
             const { cornerstone, cornerstoneTools, dicomImageLoader } = await setupCornerstone()
-            const { RenderingEngine, Enums } = cornerstone
-            const { ToolGroupManager, PanTool, ZoomTool, StackScrollTool } = cornerstoneTools
             dicomLoaderRef.current = dicomImageLoader
-            const renderingEngine = new RenderingEngine('engine')
-            renderingEngineRef.current = renderingEngine
-            renderingEngine.enableElement({
-                viewportId,
-                type: Enums.ViewportType.STACK,
-                element: elementRef.current!,
-            })
-            renderingEngine.resize(true)
-
-            const toolGroupId = 'tg'
-            let toolGroup = ToolGroupManager.getToolGroup(toolGroupId)
-            if (!toolGroup) {
-                toolGroup = ToolGroupManager.createToolGroup(toolGroupId)
-                toolGroup.addTool(PanTool.toolName)
-                toolGroup.addTool(ZoomTool.toolName)
-                toolGroup.addTool(StackScrollTool.toolName)
-                toolGroup.setToolActive(PanTool.toolName, {
-                    bindings: [{ mouseButton: 1 }],
-                })
-            }
-
-            if (!toolGroup) {
-                return
-            }
-
-            toolGroupRef.current = toolGroup
-            toolGroup.addViewport(viewportId, renderingEngine.id)
+            setCs(cornerstone)
+            setCt(cornerstoneTools)
         })()
-
-        return () => {
-            toolGroupRef.current?.destroy()
-            renderingEngineRef.current?.destroy()
-        }
     }, [])
 
     return (
-        <section>
-            <input type="file" id="fileInput" multiple accept=".dcm" onChange={onChange} />
-            <div
-                ref={elementRef}
-                style={{
-                    width: '512px',
-                    height: '512px',
-                    backgroundColor: 'black',
-                    marginTop: '15px',
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'block',
-                    padding: 0,
-                    textAlign: 'left',
-                }}
-            />
-        </section>
+        <div>
+            <div className="h-[4vh]">
+                <input type="file" id="fileInput" multiple onChange={onChange} />
+            </div>
+            <div className="w-full h-[48vh] flex">
+                <Axial cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
+                <Coronal cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
+            </div>
+            {/*<div className="w-full h-[48vh] flex">*/}
+            {/*    <Axial cornerstone={cs} cornerstoneTools={ct} dicomImageLoader={dil} imageIds={imageIds} />*/}
+            {/*    <Axial cornerstone={cs} cornerstoneTools={ct} dicomImageLoader={dil} imageIds={imageIds} />*/}
+            {/*</div>*/}
+        </div>
     )
 }
