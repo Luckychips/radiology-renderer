@@ -1,10 +1,12 @@
-import { useEffect, useRef, useContext } from 'react'
-import { CornerstoneContext } from '@/cores/provider'
+import { useEffect, useRef } from 'react'
+import { type Types as CoreTypes, RenderingEngine } from '@cornerstonejs/core'
+import { type Types } from '@cornerstonejs/tools'
 
 interface Props {
     cornerstone: any
     cornerstoneTools: any
-    renderingEngine: any
+    renderingEngine: RenderingEngine
+    toolGroup: Types.IToolGroup
     imageIds: string[]
 }
 
@@ -12,50 +14,45 @@ export default function Coronal({
     cornerstone,
     cornerstoneTools,
     renderingEngine,
+    toolGroup,
     imageIds,
 }: Props) {
-    const { toolGroup } = useContext(CornerstoneContext)!
     const elementRef = useRef<HTMLDivElement>(null)
-    const renderingEngineRef = useRef<any>(null)
-    const toolGroupRef = useRef<any>(null)
     const viewportId = 'viewport-coronal'
 
     useEffect(() => {
         if (cornerstone && cornerstoneTools) {
             const { Enums } = cornerstone
-            renderingEngineRef.current = renderingEngine
             renderingEngine.enableElement({
                 viewportId,
                 type: Enums.ViewportType.ORTHOGRAPHIC,
                 element: elementRef.current!,
             })
             setTimeout(() => renderingEngine.resize(true), 0)
-            toolGroupRef.current = toolGroup
             toolGroup.addViewport(viewportId, renderingEngine.id)
         }
 
         return () => {
-            toolGroupRef.current?.destroy()
-            renderingEngineRef.current?.destroy()
+            toolGroup.removeViewports(viewportId, renderingEngine.id)
         }
     }, [cornerstone, cornerstoneTools]);
 
     useEffect(() => {
         (async () => {
-            if (cornerstone && imageIds.length) {
+            if (cornerstone && renderingEngine && imageIds.length) {
                 const { imageLoader, volumeLoader, Enums } = cornerstone
                 await Promise.all(imageIds.map(id => imageLoader.loadImage(id)))
                 const volumeId = 'coronalVolume'
                 const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds })
                 await volume.load()
-                const viewport = renderingEngineRef.current.getViewport(viewportId)
+                const viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
                 await viewport.setVolumes([{ volumeId }])
                 viewport.setOrientation(Enums.OrientationAxis.CORONAL)
                 viewport.resetCamera(true)
                 viewport.render()
             }
         })()
-    }, [cornerstone, imageIds])
+    }, [cornerstone, renderingEngine, imageIds])
 
     return (
         <section className="w-[50vw] h-full">
