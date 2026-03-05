@@ -1,6 +1,6 @@
 import { type ChangeEvent, useState, useEffect, useRef } from 'react'
 import { setupCornerstone } from '@/cores/setup'
-import { Axial, Coronal } from '@/components'
+import { Axial, Coronal, Sagittal } from '@/components'
 
 export default function Viewer() {
     const dicomLoaderRef = useRef<any>(null)
@@ -39,10 +39,9 @@ export default function Viewer() {
                 <Axial cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
                 <Coronal cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
             </div>
-            {/*<div className="w-full h-[48vh] flex">*/}
-            {/*    <Axial cornerstone={cs} cornerstoneTools={ct} dicomImageLoader={dil} imageIds={imageIds} />*/}
-            {/*    <Axial cornerstone={cs} cornerstoneTools={ct} dicomImageLoader={dil} imageIds={imageIds} />*/}
-            {/*</div>*/}
+            <div className="w-full h-[48vh] flex">
+                <Sagittal cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
+            </div>
         </div>
     )
 }
