@@ -6,6 +6,7 @@ export default function Viewer() {
     const dicomLoaderRef = useRef<any>(null)
     const [cs, setCs] = useState<any>(null)
     const [ct, setCt] = useState<any>(null)
+    const [renderingEngine, setRenderingEngine] = useState<any>(null)
     const [imageIds, setImageIds] = useState<string[]>([])
 
     const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -23,10 +24,11 @@ export default function Viewer() {
 
     useEffect(() => {
         (async () => {
-            const { cornerstone, cornerstoneTools, dicomImageLoader } = await setupCornerstone()
+            const { cornerstone, cornerstoneTools, dicomImageLoader, RenderingEngine } = await setupCornerstone()
             dicomLoaderRef.current = dicomImageLoader
             setCs(cornerstone)
             setCt(cornerstoneTools)
+            setRenderingEngine(new RenderingEngine('mpr-viewer-engine'))
         })()
     }, [])
 
@@ -36,11 +38,11 @@ export default function Viewer() {
                 <input type="file" id="fileInput" multiple onChange={onChange} />
             </div>
             <div className="w-full h-[48vh] flex">
-                <Axial cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
-                <Coronal cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
+                <Axial renderingEngine={renderingEngine} cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
+                <Coronal renderingEngine={renderingEngine} cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
             </div>
             <div className="w-full h-[48vh] flex">
-                <Sagittal cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
+                <Sagittal renderingEngine={renderingEngine} cornerstone={cs} cornerstoneTools={ct} imageIds={imageIds} />
             </div>
         </div>
     )

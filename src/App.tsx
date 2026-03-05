@@ -1,9 +1,12 @@
 import { Viewer } from '@/components'
+import { CornerstoneProvider } from '@/cores/provider'
 
 function App() {
   return (
     <main>
-        <Viewer />
+        <CornerstoneProvider>
+            <Viewer />
+        </CornerstoneProvider>
     </main>
   )
 }

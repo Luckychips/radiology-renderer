@@ -1,24 +1,28 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useContext } from 'react'
+import { CornerstoneContext } from '@/cores/provider'
 
 interface Props {
     cornerstone: any
     cornerstoneTools: any
+    renderingEngine: any
     imageIds: string[]
 }
 
 export default function Sagittal({
     cornerstone,
     cornerstoneTools,
+    renderingEngine,
     imageIds,
 }: Props) {
+    const { toolGroup } = useContext(CornerstoneContext)!
     const elementRef = useRef<HTMLDivElement>(null)
     const renderingEngineRef = useRef<any>(null)
+    const toolGroupRef = useRef<any>(null)
     const viewportId = 'viewport-sagittal'
 
     useEffect(() => {
         if (cornerstone && cornerstoneTools) {
-            const { RenderingEngine, Enums } = cornerstone
-            const renderingEngine = new RenderingEngine('engine-sagittal')
+            const { Enums } = cornerstone
             renderingEngineRef.current = renderingEngine
             renderingEngine.enableElement({
                 viewportId,
@@ -26,9 +30,12 @@ export default function Sagittal({
                 element: elementRef.current!,
             })
             setTimeout(() => renderingEngine.resize(true), 0)
+            toolGroupRef.current = toolGroup
+            toolGroup.addViewport(viewportId, renderingEngine.id)
         }
 
         return () => {
+            toolGroupRef.current?.destroy()
             renderingEngineRef.current?.destroy()
         }
     }, [cornerstone, cornerstoneTools]);

@@ -1,16 +1,20 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useContext } from 'react'
+import { CornerstoneContext } from '@/cores/provider'
 
 interface Props {
     cornerstone: any
     cornerstoneTools: any
+    renderingEngine: any
     imageIds: string[]
 }
 
 export default function Axial({
     cornerstone,
     cornerstoneTools,
+    renderingEngine,
     imageIds,
 }: Props) {
+    const { toolGroup } = useContext(CornerstoneContext)!
     const elementRef = useRef<HTMLDivElement>(null)
     const renderingEngineRef = useRef<any>(null)
     const toolGroupRef = useRef<any>(null)
@@ -18,9 +22,7 @@ export default function Axial({
 
     useEffect(() => {
         if (cornerstone && cornerstoneTools) {
-            const { RenderingEngine, Enums } = cornerstone
-            const { ToolGroupManager, PanTool, ZoomTool, StackScrollTool } = cornerstoneTools
-            const renderingEngine = new RenderingEngine('engine-axial')
+            const { Enums } = cornerstone
             renderingEngineRef.current = renderingEngine
             renderingEngine.enableElement({
                 viewportId,
@@ -28,23 +30,6 @@ export default function Axial({
                 element: elementRef.current!,
             })
             renderingEngine.resize(true)
-
-            const toolGroupId = 'tg'
-            let toolGroup = ToolGroupManager.getToolGroup(toolGroupId)
-            if (!toolGroup) {
-                toolGroup = ToolGroupManager.createToolGroup(toolGroupId)
-                toolGroup.addTool(PanTool.toolName)
-                toolGroup.addTool(ZoomTool.toolName)
-                toolGroup.addTool(StackScrollTool.toolName)
-                toolGroup.setToolActive(PanTool.toolName, {
-                    bindings: [{ mouseButton: 1 }],
-                })
-            }
-
-            if (!toolGroup) {
-                return
-            }
-
             toolGroupRef.current = toolGroup
             toolGroup.addViewport(viewportId, renderingEngine.id)
         }
