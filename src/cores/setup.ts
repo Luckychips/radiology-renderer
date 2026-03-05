@@ -16,7 +16,6 @@ export const setupCornerstone = async () => {
         if (!isCornerstoneToolsRegistered) {
             cornerstoneTools.addTool(cornerstoneTools.PanTool)
             cornerstoneTools.addTool(cornerstoneTools.ZoomTool)
-            cornerstoneTools.addTool(cornerstoneTools.StackScrollTool)
             isCornerstoneToolsRegistered = true
         }
 

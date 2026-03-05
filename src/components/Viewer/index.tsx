@@ -1,6 +1,6 @@
 import { type ChangeEvent, useState, useEffect, useRef } from 'react'
 import { RenderingEngine } from '@cornerstonejs/core'
-import { Types, ToolGroupManager, PanTool, ZoomTool, StackScrollTool } from '@cornerstonejs/tools'
+import { Types, ToolGroupManager, PanTool, ZoomTool } from '@cornerstonejs/tools'
 import { setupCornerstone } from '@/cores/setup'
 import { Axial, Coronal, Sagittal } from '@/components'
 
@@ -42,8 +42,6 @@ export default function Viewer() {
             if (newToolGroup) {
                 addNewTool(newToolGroup, PanTool.toolName)
                 addNewTool(newToolGroup, ZoomTool.toolName)
-                addNewTool(newToolGroup, StackScrollTool.toolName)
-
                 newToolGroup.setToolActive(PanTool.toolName, {
                     bindings: [{ mouseButton: 1 }],
                 })
