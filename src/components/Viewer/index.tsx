@@ -12,6 +12,12 @@ export default function Viewer() {
     const [toolGroup, setToolGroup] = useState<Types.IToolGroup | null>(null)
     const [imageIds, setImageIds] = useState<string[]>([])
 
+    const addNewTool = (newToolGroup:  Types.IToolGroup, toolName: any) => {
+        if (!newToolGroup.hasTool(toolName)) {
+            newToolGroup.addTool(toolName)
+        }
+    }
+
     const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files
         if (!files) return
@@ -34,9 +40,10 @@ export default function Viewer() {
             setRenderingEngine(new cornerstone.RenderingEngine('mpr-viewer-engine'))
             const newToolGroup =  ToolGroupManager.getToolGroup('mainToolGroup') || ToolGroupManager.createToolGroup('mainToolGroup')
             if (newToolGroup) {
-                newToolGroup.addTool(PanTool.toolName)
-                newToolGroup.addTool(ZoomTool.toolName)
-                newToolGroup.addTool(StackScrollTool.toolName)
+                addNewTool(newToolGroup, PanTool.toolName)
+                addNewTool(newToolGroup, ZoomTool.toolName)
+                addNewTool(newToolGroup, StackScrollTool.toolName)
+
                 newToolGroup.setToolActive(PanTool.toolName, {
                     bindings: [{ mouseButton: 1 }],
                 })
