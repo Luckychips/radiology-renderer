@@ -21,7 +21,7 @@ export default function ImageStackPager({
                     onClick={() => {
                         if (currentImageStackIndex <= 0) return
                         const index = currentImageStackIndex - 1
-                        const max = Math.max(index, totalImageStackCount - 1)
+                        const max = Math.min(index, totalImageStackCount - 1)
                         setCurrentImageStackIndex(max)
                     }}>
                     <BaseIcon iconColor="black">

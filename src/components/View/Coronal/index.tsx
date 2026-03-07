@@ -59,6 +59,25 @@ export default function Coronal({
         })()
     }, [cornerstone, renderingEngine, imageIds])
 
+    useEffect(() => {
+        if (renderingEngine) {
+            const viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
+            const camera = viewport.getCamera();
+            const axis = camera.viewPlaneNormal!.findIndex(v => Math.abs(v) === 1)
+            const imageData = viewport.getImageData()
+            if (imageData) {
+                const origin = imageData.origin
+                const spacing = imageData.spacing
+                const worldPosition = origin[axis] + currentImageStackIndex * spacing[axis]
+                const delta = worldPosition - camera.focalPoint![axis]
+                camera.focalPoint![axis] += delta
+                camera.position![axis] += delta
+                viewport.setCamera(camera)
+                viewport.render()
+            }
+        }
+    }, [currentImageStackIndex, renderingEngine])
+
     return (
         <section className="relative w-[50vw] h-full">
             <ImageStackPager

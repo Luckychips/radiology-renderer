@@ -42,7 +42,7 @@ export default function Axial({
 
     useEffect(() => {
         (async () => {
-            if (imageIds.length && renderingEngine) {
+            if (cornerstone && imageIds.length && renderingEngine) {
                 const viewport: any = renderingEngine.getViewport(viewportId)
                 await viewport.setStack(imageIds)
                 setCurrentImageStackIndex(viewport.getCurrentImageIdIndex())
@@ -51,7 +51,7 @@ export default function Axial({
                 viewport.render()
             }
         })()
-    }, [imageIds, renderingEngine])
+    }, [cornerstone, imageIds, renderingEngine])
 
     useEffect(() => {
         if (renderingEngine) {
