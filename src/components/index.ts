@@ -1,6 +1,7 @@
-export { default as Axial } from './Axial'
-export { default as Coronal } from './Coronal'
-export { default as Sagittal } from './Sagittal'
-export { default as Viewer } from './Viewer'
+export { default as Axial } from './View/Axial'
+export { default as Coronal } from './View/Coronal'
+export { default as Sagittal } from './View/Sagittal'
+export { default as MPR } from './View/MPR'
 
-export { default as BaseIcon } from './BaseIcon'
+export { default as BaseIcon } from './Widget/BaseIcon'
+export { default as ImageStackPager } from './Widget/ImageStackPager'

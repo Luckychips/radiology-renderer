@@ -1,9 +1,9 @@
-import { Viewer } from '@/components'
+import { MPR } from '@/components'
 
 function App() {
   return (
     <main>
-        <Viewer />
+        <MPR />
     </main>
   )
 }

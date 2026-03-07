@@ -4,7 +4,7 @@ import { Types, ToolGroupManager, PanTool, ZoomTool } from '@cornerstonejs/tools
 import { setupCornerstone } from '@/cores/setup'
 import { Axial, Coronal, Sagittal } from '@/components'
 
-export default function Viewer() {
+export default function MPR() {
     const dicomLoaderRef = useRef<any>(null)
     const [cs, setCs] = useState<any>(null)
     const [ct, setCt] = useState<any>(null)

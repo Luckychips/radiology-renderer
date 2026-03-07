@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { type Types as CoreTypes, RenderingEngine } from '@cornerstonejs/core'
 import { type Types } from '@cornerstonejs/tools'
+import { ImageStackPager } from '@/components'
 
 interface Props {
     cornerstone: any
@@ -19,6 +20,8 @@ export default function Sagittal({
 }: Props) {
     const elementRef = useRef<HTMLDivElement>(null)
     const viewportId = 'viewport-sagittal'
+    const [currentImageStackIndex, setCurrentImageStackIndex] = useState(0)
+    const [totalImageStackCount, setTotalImageStackCount] = useState(0)
 
     useEffect(() => {
         if (cornerstone && cornerstoneTools) {
@@ -48,6 +51,8 @@ export default function Sagittal({
                 const viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
                 await viewport.setVolumes([{ volumeId }])
                 viewport.setOrientation(Enums.OrientationAxis.SAGITTAL)
+                setCurrentImageStackIndex(viewport.getCurrentImageIdIndex())
+                setTotalImageStackCount(viewport.getImageIds().length)
                 viewport.resetCamera(true)
                 viewport.render()
             }
@@ -55,7 +60,12 @@ export default function Sagittal({
     }, [cornerstone, renderingEngine, imageIds])
 
     return (
-        <section className="w-[50vw] h-full">
+        <section className="relative w-[50vw] h-full">
+            <ImageStackPager
+                currentImageStackIndex={currentImageStackIndex}
+                totalImageStackCount={totalImageStackCount}
+                setCurrentImageStackIndex={setCurrentImageStackIndex}
+            />
             <div
                 ref={elementRef}
                 style={{
