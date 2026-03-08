@@ -22,13 +22,32 @@ export default function MPR() {
         const files = e.target.files
         if (!files) return
 
-        const ids: string[] = []
+        const dicomParser = await import('dicom-parser')
+        const ids: {
+            instanceNumber: number
+            imageId: string
+        }[] = []
         for (let i = 0; i < files.length; i++) {
-            const imageId = dicomLoaderRef.current.wadouri.fileManager.add(files[i])
-            ids.push(imageId)
+            const file = files[i]
+            const byteArray = new Uint8Array(await file.arrayBuffer())
+            const dataSet = dicomParser.parseDicom(byteArray)
+            const instanceNumber = dataSet.intString('x00200013')!
+            // const imagePosition = dataSet.string('x00200032');
+            // const sliceLocation = dataSet.string('x00201041');
+            // const seriesUID = dataSet.string('x0020000e');
+            const imageId = dicomLoaderRef.current.wadouri.fileManager.add(file)
+            ids.push({ instanceNumber, imageId })
         }
 
-        setImageIds(ids)
+        if (cs) {
+            const sorted = ids.sort((a, b) => {
+                return a.instanceNumber - b.instanceNumber
+            }).map((item) => {
+                return item.imageId
+            });
+
+            setImageIds(sorted)
+        }
     }
 
     useEffect(() => {
