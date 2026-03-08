@@ -45,7 +45,7 @@ export default function Coronal({
             if (cornerstone && renderingEngine && imageIds.length) {
                 const { imageLoader, volumeLoader, Enums } = cornerstone
                 await Promise.all(imageIds.map(id => imageLoader.loadImage(id)))
-                const volumeId = 'coronalVolume'
+                const volumeId = `coronalVolume-${Date.now()}`
                 const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds })
                 await volume.load()
                 const viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
