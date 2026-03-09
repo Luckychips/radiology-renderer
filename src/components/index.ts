@@ -1,3 +1,4 @@
+export { default as Abstracter } from './View/Abstracter'
 export { default as Axial } from './View/Axial'
 export { default as Coronal } from './View/Coronal'
 export { default as Sagittal } from './View/Sagittal'
