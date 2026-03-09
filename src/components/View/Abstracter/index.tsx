@@ -27,12 +27,22 @@ export default function Abstracter({
     useEffect(() => {
         if (cornerstone && cornerstoneTools) {
             const { Enums } = cornerstone
-            renderingEngine.enableElement({
-                viewportId,
-                type: Enums.ViewportType.ORTHOGRAPHIC,
-                element: elementRef.current!,
-            })
-            setTimeout(() => renderingEngine.resize(true), 0)
+            if (viewportId.includes('axial')) {
+                renderingEngine.enableElement({
+                    viewportId,
+                    type: Enums.ViewportType.STACK,
+                    element: elementRef.current!,
+                })
+                renderingEngine.resize(true)
+            } else {
+                renderingEngine.enableElement({
+                    viewportId,
+                    type: Enums.ViewportType.ORTHOGRAPHIC,
+                    element: elementRef.current!,
+                })
+                setTimeout(() => renderingEngine.resize(true), 0)
+            }
+
             toolGroup.addViewport(viewportId, renderingEngine.id)
         }
 
@@ -44,17 +54,23 @@ export default function Abstracter({
     useEffect(() => {
         (async () => {
             if (cornerstone && renderingEngine && imageIds.length) {
-                const { imageLoader, volumeLoader, Enums } = cornerstone
-                await Promise.all(imageIds.map(id => imageLoader.loadImage(id)))
-                const volumeId = `${viewportId}-${Date.now()}`
-                const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds })
-                await volume.load()
-                const viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
-                await viewport.setVolumes([{ volumeId }])
-                if (viewportId.includes('coronal')) {
-                    viewport.setOrientation(Enums.OrientationAxis.CORONAL)
-                } else if (viewportId.includes('sagittal')) {
-                    viewport.setOrientation(Enums.OrientationAxis.SAGITTAL)
+                let viewport;
+                if (viewportId.includes('axial')) {
+                    viewport = renderingEngine.getViewport(viewportId) as any
+                    await viewport.setStack(imageIds)
+                } else {
+                    const { imageLoader, volumeLoader, Enums } = cornerstone
+                    await Promise.all(imageIds.map(id => imageLoader.loadImage(id)))
+                    const volumeId = `${viewportId}-${Date.now()}`
+                    const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds })
+                    await volume.load()
+                    viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
+                    await viewport.setVolumes([{ volumeId }])
+                    if (viewportId.includes('coronal')) {
+                        viewport.setOrientation(Enums.OrientationAxis.CORONAL)
+                    } else if (viewportId.includes('sagittal')) {
+                        viewport.setOrientation(Enums.OrientationAxis.SAGITTAL)
+                    }
                 }
 
                 setCurrentImageStackIndex(viewport.getCurrentImageIdIndex())
@@ -67,19 +83,24 @@ export default function Abstracter({
 
     useEffect(() => {
         if (renderingEngine) {
-            const viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
-            const camera = viewport.getCamera();
-            const axis = camera.viewPlaneNormal!.findIndex(v => Math.abs(v) === 1)
-            const imageData = viewport.getImageData()
-            if (imageData) {
-                const origin = imageData.origin
-                const spacing = imageData.spacing
-                const worldPosition = origin[axis] + currentImageStackIndex * spacing[axis]
-                const delta = worldPosition - camera.focalPoint![axis]
-                camera.focalPoint![axis] += delta
-                camera.position![axis] += delta
-                viewport.setCamera(camera)
-                viewport.render()
+            if (viewportId.includes('axial')) {
+                const viewport: any = renderingEngine.getViewport(viewportId)
+                viewport.setImageIdIndex(currentImageStackIndex);
+            } else {
+                const viewport = renderingEngine.getViewport(viewportId) as CoreTypes.IVolumeViewport
+                const camera = viewport.getCamera();
+                const axis = camera.viewPlaneNormal!.findIndex(v => Math.abs(v) === 1)
+                const imageData = viewport.getImageData()
+                if (imageData) {
+                    const origin = imageData.origin
+                    const spacing = imageData.spacing
+                    const worldPosition = origin[axis] + currentImageStackIndex * spacing[axis]
+                    const delta = worldPosition - camera.focalPoint![axis]
+                    camera.focalPoint![axis] += delta
+                    camera.position![axis] += delta
+                    viewport.setCamera(camera)
+                    viewport.render()
+                }
             }
         }
     }, [currentImageStackIndex, renderingEngine])
