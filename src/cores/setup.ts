@@ -12,7 +12,6 @@ export const setupCornerstone = async () => {
         await cornerstone.init()
         await cornerstoneTools.init()
         dicomImageLoader.init()
-        cornerstone.imageLoader.registerImageLoader('wadouri', dicomImageLoader.wadouri.loadImage)
 
         if (!isCornerstoneToolsRegistered) {
             cornerstoneTools.addTool(cornerstoneTools.PanTool)

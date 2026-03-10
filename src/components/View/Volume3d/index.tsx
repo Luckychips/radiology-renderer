@@ -24,7 +24,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                     setVolumesForViewports,
                 } = cornerstone
                 await Promise.all(imageIds.map(id => imageLoader.loadAndCacheImage(id)))
-                const volumeId = 'cornerstoneStreamingImageVolume:myVolume'
+                const volumeId = `cornerstoneStreamingImageVolume:${Date.now()}`
                 renderingEngine.enableElement({
                     viewportId,
                     type: Enums.ViewportType.VOLUME_3D,
@@ -70,13 +70,38 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 rgb.addRGBPoint(4, 1,0,0)
                 rgb.addRGBPoint(8, 1,1,0)
 
+                // volume smooth rendering
                 property.setInterpolationTypeToLinear()
                 property.setShade(true)
 
+                const imagePlane = cornerstone.metaData.get('imagePlaneModule', imageIds[0])
+                const firstSlicePosition = imagePlane.imagePositionPatient
+                const orientation = imagePlane.imageOrientationPatient
+                const rowCosines = orientation.slice(0, 3)
+                const colCosines = orientation.slice(3, 6)
+                const sliceNormal = [
+                    rowCosines[1] * colCosines[2] - rowCosines[2] * colCosines[1],
+                    rowCosines[2] * colCosines[0] - rowCosines[0] * colCosines[2],
+                    rowCosines[0] * colCosines[1] - rowCosines[1] * colCosines[0],
+                ]
+                const distance = 1500
+                const cameraPosition = [
+                    firstSlicePosition[0] + sliceNormal[0] * distance,
+                    firstSlicePosition[1] + sliceNormal[1] * distance,
+                    firstSlicePosition[2] + sliceNormal[2] * distance,
+                ]
+
                 viewport.setCamera({
-                    viewPlaneNormal: [0,0,-1],
-                    viewUp: [0,-1,0]
+                    focalPoint: firstSlicePosition,
+                    position: cameraPosition,
+                    viewUp: [
+                        -colCosines[0],
+                        -colCosines[1],
+                        -colCosines[2],
+                    ],
                 })
+                actor.setScale([-1, 1, 1])
+
                 viewport.resetCamera()
                 viewport.render()
             }
