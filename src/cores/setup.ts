@@ -17,6 +17,8 @@ export const setupCornerstone = async () => {
             cornerstoneTools.addTool(cornerstoneTools.PanTool)
             cornerstoneTools.addTool(cornerstoneTools.ZoomTool)
             cornerstoneTools.addTool(cornerstoneTools.TrackballRotateTool)
+            cornerstoneTools.addTool(cornerstoneTools.CrosshairsTool)
+
             isCornerstoneToolsRegistered = true
         }
 

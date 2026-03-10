@@ -52,9 +52,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 const property = actor.getProperty()
 
                 const opacity = property.getScalarOpacity()
-
                 opacity.removeAllPoints()
-
                 opacity.addPoint(0, 0)
                 opacity.addPoint(1, 0.05)
                 opacity.addPoint(2, 0.2)
@@ -62,9 +60,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 opacity.addPoint(8, 1)
 
                 const rgb = property.getRGBTransferFunction(0)
-
                 rgb.removeAllPoints()
-
                 rgb.addRGBPoint(0, 0,0,0)
                 rgb.addRGBPoint(2, 0,0,1)
                 rgb.addRGBPoint(4, 1,0,0)
@@ -94,11 +90,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 viewport.setCamera({
                     focalPoint: firstSlicePosition,
                     position: cameraPosition,
-                    viewUp: [
-                        -colCosines[0],
-                        -colCosines[1],
-                        -colCosines[2],
-                    ],
+                    viewUp: [-colCosines[0], -colCosines[1], -colCosines[2]],
                 })
                 actor.setScale([-1, 1, 1])
 

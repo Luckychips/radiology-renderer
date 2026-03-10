@@ -62,6 +62,7 @@ export default function MPR() {
                 addNewTool(newToolGroup, PanTool.toolName)
                 addNewTool(newToolGroup, ZoomTool.toolName)
                 addNewTool(newToolGroup, TrackballRotateTool.toolName)
+
                 // newToolGroup.setToolActive(PanTool.toolName, {
                 //     bindings: [{ mouseButton: 1 }],
                 // })
