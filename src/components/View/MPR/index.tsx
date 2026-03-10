@@ -1,8 +1,8 @@
 import { type ChangeEvent, useState, useEffect, useRef } from 'react'
 import { RenderingEngine } from '@cornerstonejs/core'
-import { Types, ToolGroupManager, PanTool, ZoomTool } from '@cornerstonejs/tools'
+import { Types, ToolGroupManager, PanTool, ZoomTool, TrackballRotateTool } from '@cornerstonejs/tools'
 import { setupCornerstone } from '@/cores/setup'
-import { Axial, Coronal, Sagittal } from '@/components'
+import { Axial, Coronal, Sagittal, Volume3d } from '@/components'
 
 export default function MPR() {
     const dicomLoaderRef = useRef<any>(null)
@@ -61,7 +61,11 @@ export default function MPR() {
             if (newToolGroup) {
                 addNewTool(newToolGroup, PanTool.toolName)
                 addNewTool(newToolGroup, ZoomTool.toolName)
-                newToolGroup.setToolActive(PanTool.toolName, {
+                addNewTool(newToolGroup, TrackballRotateTool.toolName)
+                // newToolGroup.setToolActive(PanTool.toolName, {
+                //     bindings: [{ mouseButton: 1 }],
+                // })
+                newToolGroup.setToolActive(TrackballRotateTool.toolName, {
                     bindings: [{ mouseButton: 1 }],
                 })
 
@@ -103,6 +107,13 @@ export default function MPR() {
                             toolGroup={toolGroup}
                             cornerstone={cs}
                             cornerstoneTools={ct}
+                            imageIds={imageIds}
+                        />
+                        <Volume3d
+                            renderingEngine={renderingEngine}
+                            toolGroup={toolGroup}
+                            cornerstone={cs}
+                            viewportId="viewport-3d"
                             imageIds={imageIds}
                         />
                     </div>
