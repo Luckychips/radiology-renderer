@@ -104,19 +104,11 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         return { firstSlicePosition, sliceNormal, colCosines, rowCosines }
     }
 
-    const getVolumeActor = (volumeId: string, viewport: any) => {
-        const volumeEntry = viewport.getActors().find((a: any)=> {
-            return a.referencedId === volumeId
-        })
-
-        return volumeEntry.actor
-    }
-
     const createPlaneActor = (
-        origin:number[],
-        p1:number[],
-        p2:number[],
-        color:number[]
+        origin: number[],
+        p1: number[],
+        p2: number[],
+        color: number[]
     ) => {
         const plane = vtkPlaneSource.newInstance()
 
@@ -136,8 +128,60 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         return actor
     }
 
+    /**
+     *
+     * @param coordinate  - 3d volume center position (x, y, z)
+     * @param vector1     - direction vector (axial,coronal:row, sagittal:col)
+     * @param vector2     - direction vector (axial:col, coronal,sagittal:normal)
+     * @param horizontal  - volume size (axial,coronal:width, sagittal:height)
+     * @param vertical    - volume size (axial:height, coronal,sagittal:depth)
+     */
+    const getCalculatedOrigin = (
+        coordinate: number[],
+        vector1: number[],
+        vector2: number[],
+        horizontal: number,
+        vertical: number,
+    ) => {
+        return [
+            coordinate[0] - vector1[0] * horizontal / 2 - vector2[0] * vertical / 2,
+            coordinate[1] - vector1[1] * horizontal / 2 - vector2[1] * vertical / 2,
+            coordinate[2] - vector1[2] * horizontal / 2 - vector2[2] * vertical / 2,
+        ]
+    }
+
+    const getCalculatedPoint1 = (
+        coordinate: number[],
+        vector1: number[],
+        vector2: number[],
+        horizontal: number,
+        vertical: number,
+    ) => {
+        return [
+            coordinate[0] + vector1[0] * horizontal / 2 - vector2[0] * vertical / 2,
+            coordinate[1] + vector1[1] * horizontal / 2 - vector2[1] * vertical / 2,
+            coordinate[2] + vector1[2] * horizontal / 2 - vector2[2] * vertical / 2,
+        ]
+    }
+
+    const getCalculatedPoint2 = (
+        coordinate: number[],
+        vector1: number[],
+        vector2: number[],
+        horizontal: number,
+        vertical: number,
+    ) => {
+        return [
+            coordinate[0] - vector1[0] * horizontal / 2 + vector2[0] * vertical / 2,
+            coordinate[1] - vector1[1] * horizontal / 2 + vector2[1] * vertical / 2,
+            coordinate[2] - vector1[2] * horizontal / 2 + vector2[2] * vertical / 2,
+        ]
+    }
+
     const initializePlanes = (volumeId: string, viewport: any) => {
-        const volumeActor = getVolumeActor(volumeId, viewport)
+        const volumeActor = viewport.getActors().find((a: any)=> {
+            return a.referencedId === volumeId
+        }).actor
         const imageData = volumeActor.getMapper().getInputData()
         const bounds = imageData.getBounds()
         const center = [
@@ -163,68 +207,27 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
 
         const renderer = viewport.getRenderer()
 
-        const axialActor = createPlaneActor(
-            [
-                center[0] - row[0] * width / 2 - col[0] * height / 2,
-                center[1] - row[1] * width / 2 - col[1] * height / 2,
-                center[2] - row[2] * width / 2 - col[2] * height / 2
-            ],
-            [
-                center[0] + row[0] * width / 2 - col[0] * height / 2,
-                center[1] + row[1] * width / 2 - col[1] * height / 2,
-                center[2] + row[2] * width / 2 - col[2] * height / 2
-            ],
-            [
-                center[0] - row[0] * width / 2 + col[0] * height / 2,
-                center[1] - row[1] * width / 2 + col[1] * height / 2,
-                center[2] - row[2] * width / 2 + col[2] * height / 2
-            ],
-            [1,0,0]
-        )
-
+        const axialOrigin = getCalculatedOrigin(center, row, col, width, height)
+        const axialPoint1 = getCalculatedPoint1(center, row, col, width, height)
+        const axialPoint2 = getCalculatedPoint2(center, row, col, width, height)
+        const axialColor = [1,0,0]
+        const axialActor = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, axialColor)
         renderer.addActor(axialActor)
 
-        const coronalActor = createPlaneActor(
-            [
-                center[0] - row[0] * width / 2 - normal[0] * depth / 2,
-                center[1] - row[1] * width / 2 - normal[1] * depth / 2,
-                center[2] - row[2] * width / 2 - normal[2] * depth / 2
-            ],
-            [
-                center[0] + row[0] * width / 2 - normal[0] * depth / 2,
-                center[1] + row[1] * width / 2 - normal[1] * depth / 2,
-                center[2] + row[2] * width / 2 - normal[2] * depth / 2
-            ],
-            [
-                center[0] - row[0] * width / 2 + normal[0] * depth / 2,
-                center[1] - row[1] * width / 2 + normal[1] * depth / 2,
-                center[2] - row[2] * width / 2 + normal[2] * depth / 2
-            ],
-            [0,1,0]
-        )
-
+        const coronalOrigin = getCalculatedOrigin(center, row, normal, width, depth)
+        const coronalPoint1 = getCalculatedPoint1(center, row, normal, width, depth)
+        const coronalPoint2 = getCalculatedPoint2(center, row, normal, width, depth)
+        const coronalColor = [0,1,0]
+        const coronalActor = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, coronalColor)
         renderer.addActor(coronalActor)
 
-        const sagittalActor = createPlaneActor(
-            [
-                center[0] - col[0] * height / 2 - normal[0] * depth / 2,
-                center[1] - col[1] * height / 2 - normal[1] * depth / 2,
-                center[2] - col[2] * height / 2 - normal[2] * depth / 2
-            ],
-            [
-                center[0] + col[0] * height / 2 - normal[0] * depth / 2,
-                center[1] + col[1] * height / 2 - normal[1] * depth / 2,
-                center[2] + col[2] * height / 2 - normal[2] * depth / 2
-            ],
-            [
-                center[0] - col[0] * height / 2 + normal[0] * depth / 2,
-                center[1] - col[1] * height / 2 + normal[1] * depth / 2,
-                center[2] - col[2] * height / 2 + normal[2] * depth / 2
-            ],
-            [0,0,1]
-        )
-
+        const sagittalOrigin = getCalculatedOrigin(center, col, normal, height, depth)
+        const sagittalPoint1 = getCalculatedPoint1(center, col, normal, height, depth)
+        const sagittalPoint2 = getCalculatedPoint2(center, col, normal, height, depth)
+        const sagittalColor = [0,0,1]
+        const sagittalActor = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, sagittalColor)
         renderer.addActor(sagittalActor)
+
         viewport.render()
     }
 
