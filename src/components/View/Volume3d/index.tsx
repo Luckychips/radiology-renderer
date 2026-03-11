@@ -5,7 +5,6 @@ import vtkPlaneSource from '@kitware/vtk.js/Filters/Sources/PlaneSource'
 import vtkMapper from '@kitware/vtk.js/Rendering/Core/Mapper'
 import vtkActor from '@kitware/vtk.js/Rendering/Core/Actor'
 
-// todo - axial plane 초기 위치 변경
 // todo - image stack index 이동 시 plane 이동되게끔
 
 interface Props {
@@ -189,7 +188,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             (bounds[2] + bounds[3]) / 2,
             (bounds[4] + bounds[5]) / 2
         ]
-
         const dims = imageData.getDimensions()
         const spacing = imageData.getSpacing()
         const width = dims[0] * spacing[0]
@@ -207,9 +205,10 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
 
         const renderer = viewport.getRenderer()
 
-        const axialOrigin = getCalculatedOrigin(center, row, col, width, height)
-        const axialPoint1 = getCalculatedPoint1(center, row, col, width, height)
-        const axialPoint2 = getCalculatedPoint2(center, row, col, width, height)
+        const axialCoordinate = [center[0], center[1], bounds[5]]
+        const axialOrigin = getCalculatedOrigin(axialCoordinate, row, col, width, height)
+        const axialPoint1 = getCalculatedPoint1(axialCoordinate, row, col, width, height)
+        const axialPoint2 = getCalculatedPoint2(axialCoordinate, row, col, width, height)
         const axialColor = [1,0,0]
         const axialActor = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, axialColor)
         renderer.addActor(axialActor)
