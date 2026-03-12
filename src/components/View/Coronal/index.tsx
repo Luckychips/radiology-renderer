@@ -1,6 +1,7 @@
 import { RenderingEngine } from '@cornerstonejs/core'
 import { type Types } from '@cornerstonejs/tools'
 import { Abstracter } from '@/components'
+import { useViewerStore } from '@/stores/mpr'
 
 interface Props {
     cornerstone: any
@@ -17,6 +18,7 @@ export default function Coronal({
     toolGroup,
     imageIds,
 }: Props) {
+    const { coronalCurrentImageStackIndex, setCoronalCurrentImageStackIndex } = useViewerStore()
     return (
         <Abstracter
             cornerstone={cornerstone}
@@ -25,6 +27,8 @@ export default function Coronal({
             toolGroup={toolGroup}
             viewportId="viewport-coronal"
             imageIds={imageIds}
+            currentImageStackIndex={coronalCurrentImageStackIndex}
+            setCurrentImageStackIndex={setCoronalCurrentImageStackIndex}
         />
     )
 }

@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RenderingEngine } from '@cornerstonejs/core'
 import { type Types } from '@cornerstonejs/tools'
 import vtkPlaneSource from '@kitware/vtk.js/Filters/Sources/PlaneSource'
 import vtkMapper from '@kitware/vtk.js/Rendering/Core/Mapper'
 import vtkActor from '@kitware/vtk.js/Rendering/Core/Actor'
+import { useViewerStore } from '@/stores/mpr'
 
 // todo - image stack index 이동 시 plane 이동되게끔
 
@@ -16,7 +17,12 @@ interface Props {
 }
 
 export default function Volume3D({ cornerstone, renderingEngine, toolGroup, viewportId, imageIds }: Props) {
+    const { axialCurrentImageStackIndex } = useViewerStore()
     const elementRef = useRef<HTMLDivElement>(null)
+    const dataRef = useRef<any>({})
+    const axialActorRef = useRef<any>(null)
+    const axialPlaneRef = useRef<any>(null)
+    const [isInitialized, setIsInitialized] = useState(false)
 
     const initializeVolume = async () => {
         await import('@cornerstonejs/streaming-image-volume-loader')
@@ -84,6 +90,9 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             rowCosines[2] * colCosines[0] - rowCosines[0] * colCosines[2],
             rowCosines[0] * colCosines[1] - rowCosines[1] * colCosines[0],
         ]
+        console.log('row : ', rowCosines)
+        console.log('col : ', colCosines)
+        console.log('normal : ', sliceNormal)
         const distance = 1500
         const cameraPosition = [
             firstSlicePosition[0] + sliceNormal[0] * distance,
@@ -100,6 +109,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         viewport.resetCamera()
         viewport.render()
 
+        dataRef.current.firstSliceZ = firstSlicePosition[2]
         return { firstSlicePosition, sliceNormal, colCosines, rowCosines }
     }
 
@@ -124,7 +134,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         actor.getProperty().setColor(...color)
         actor.getProperty().setOpacity(0.35)
 
-        return actor
+        return { plane, actor }
     }
 
     /**
@@ -188,6 +198,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             (bounds[2] + bounds[3]) / 2,
             (bounds[4] + bounds[5]) / 2
         ]
+        console.log("bounds", bounds)
         const dims = imageData.getDimensions()
         const spacing = imageData.getSpacing()
         const width = dims[0] * spacing[0]
@@ -210,25 +221,72 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         const axialPoint1 = getCalculatedPoint1(axialCoordinate, row, col, width, height)
         const axialPoint2 = getCalculatedPoint2(axialCoordinate, row, col, width, height)
         const axialColor = [1,0,0]
-        const axialActor = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, axialColor)
+        const { actor: axialActor, plane: axialPlane } = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, axialColor)
+        axialActor.setScale([-1,1,1])
+        axialActorRef.current = axialActor
+        axialPlaneRef.current = axialPlane
         renderer.addActor(axialActor)
 
         const coronalOrigin = getCalculatedOrigin(center, row, normal, width, depth)
         const coronalPoint1 = getCalculatedPoint1(center, row, normal, width, depth)
         const coronalPoint2 = getCalculatedPoint2(center, row, normal, width, depth)
         const coronalColor = [0,1,0]
-        const coronalActor = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, coronalColor)
+        const { actor: coronalActor, plane: coronalPlane } = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, coronalColor)
         renderer.addActor(coronalActor)
 
         const sagittalOrigin = getCalculatedOrigin(center, col, normal, height, depth)
         const sagittalPoint1 = getCalculatedPoint1(center, col, normal, height, depth)
         const sagittalPoint2 = getCalculatedPoint2(center, col, normal, height, depth)
         const sagittalColor = [0,0,1]
-        const sagittalActor = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, sagittalColor)
+        const { actor: sagittalActor, plane: sagittalPlane } = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, sagittalColor)
         renderer.addActor(sagittalActor)
 
         viewport.render()
+
+        dataRef.current.center = center
+        dataRef.current.spacing2 = spacing
+        dataRef.current.row = row
+        dataRef.current.col = col
+        dataRef.current.width = width
+        dataRef.current.height = height
+        dataRef.current.zMin = bounds[4]
     }
+
+    const updateAxialPlane = (viewport: any, index: number) => {
+        const plane = axialPlaneRef.current!
+        axialActorRef.current!.getProperty().setLighting(false)
+
+        const { firstSliceZ, spacing2, center, row, col, width, height } = dataRef.current!
+
+        const z = firstSliceZ - index * spacing2[2]
+
+        const coordinate = [center[0], center[1], z]
+
+        const origin = getCalculatedOrigin(coordinate, row, col, width, height)
+        const p1 = getCalculatedPoint1(coordinate, row, col, width, height)
+        const p2 = getCalculatedPoint2(coordinate, row, col, width, height)
+
+        plane.setOrigin(...origin)
+        plane.setPoint1(...p1)
+        plane.setPoint2(...p2)
+
+        console.log("plane origin", plane.getOrigin())
+        console.log("plane p1", plane.getPoint1())
+        console.log("plane p2", plane.getPoint2())
+
+        plane.modified()
+        axialActorRef.current!.getMapper().modified()
+        axialActorRef.current!.modified()
+        viewport.getRenderer().resetCameraClippingRange()
+        viewport.render()
+    }
+
+    useEffect(() => {
+        if (isInitialized && axialCurrentImageStackIndex >= 0) {
+            const viewport: any = renderingEngine.getViewport(viewportId)
+            updateAxialPlane(viewport, axialCurrentImageStackIndex)
+        }
+    }, [isInitialized, axialCurrentImageStackIndex]);
 
     useEffect(() => {
         (async () => {
@@ -238,6 +296,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 const { actor } = initializeModel(viewport)
                 initializeCamera(viewport, actor)
                 initializePlanes(volumeId, viewport)
+                setIsInitialized(true)
             }
         })()
 

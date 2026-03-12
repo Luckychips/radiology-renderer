@@ -1,8 +1,8 @@
 import { type ChangeEvent, useState, useEffect, useRef } from 'react'
 import { RenderingEngine } from '@cornerstonejs/core'
 import { Types, ToolGroupManager, PanTool, ZoomTool, TrackballRotateTool } from '@cornerstonejs/tools'
-import { setupCornerstone } from '@/cores/setup'
 import { Axial, Coronal, Sagittal, Volume3d } from '@/components'
+import { setupCornerstone } from '@/cores/setup'
 
 export default function MPR() {
     const dicomLoaderRef = useRef<any>(null)

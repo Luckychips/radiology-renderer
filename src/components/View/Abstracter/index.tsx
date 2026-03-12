@@ -10,6 +10,8 @@ interface Props {
     toolGroup: Types.IToolGroup
     viewportId: string
     imageIds: string[]
+    currentImageStackIndex: number
+    setCurrentImageStackIndex: (v: number) => void
 }
 
 export default function Abstracter({
@@ -19,9 +21,10 @@ export default function Abstracter({
     toolGroup,
     viewportId,
     imageIds,
+    currentImageStackIndex,
+    setCurrentImageStackIndex,
 }: Props) {
     const elementRef = useRef<HTMLDivElement>(null)
-    const [currentImageStackIndex, setCurrentImageStackIndex] = useState(0)
     const [totalImageStackCount, setTotalImageStackCount] = useState(0)
 
     useEffect(() => {
