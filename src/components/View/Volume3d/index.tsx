@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { RenderingEngine } from '@cornerstonejs/core'
 import { type Types } from '@cornerstonejs/tools'
-import vtkPlaneSource from '@kitware/vtk.js/Filters/Sources/PlaneSource'
+import vtkPolyData from '@kitware/vtk.js/Common/DataModel/PolyData'
+import vtkPoints from '@kitware/vtk.js/Common/Core/Points'
+import vtkCellArray from '@kitware/vtk.js/Common/Core/CellArray'
 import vtkMapper from '@kitware/vtk.js/Rendering/Core/Mapper'
 import vtkActor from '@kitware/vtk.js/Rendering/Core/Actor'
 import { useViewerStore } from '@/stores/mpr'
@@ -21,7 +23,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
     const elementRef = useRef<HTMLDivElement>(null)
     const dataRef = useRef<any>({})
     const axialActorRef = useRef<any>(null)
-    const axialPlaneRef = useRef<any>(null)
+    const axialPointsRef = useRef<any>(null)
     const [isInitialized, setIsInitialized] = useState(false)
 
     const initializeVolume = async () => {
@@ -119,22 +121,39 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         p2: number[],
         color: number[]
     ) => {
-        const plane = vtkPlaneSource.newInstance()
+        const points = vtkPoints.newInstance()
+        points.setNumberOfPoints(4)
 
-        plane.setOrigin(...origin)
-        plane.setPoint1(...p1)
-        plane.setPoint2(...p2)
+        const p3 = [
+            p1[0] + p2[0] - origin[0],
+            p1[1] + p2[1] - origin[1],
+            p1[2] + p2[2] - origin[2]
+        ]
+
+        points.setPoint(0, origin[0], origin[1], origin[2])
+        points.setPoint(1, p1[0], p1[1], p1[2])
+        points.setPoint(2, p3[0], p3[1], p3[2])
+        points.setPoint(3, p2[0], p2[1], p2[2])
+
+        const polys = vtkCellArray.newInstance({
+            values: new Uint32Array([4,0,1,2,3])
+        })
+
+        const polydata = vtkPolyData.newInstance()
+        polydata.setPoints(points)
+        polydata.setPolys(polys)
 
         const mapper = vtkMapper.newInstance()
-        mapper.setInputConnection(plane.getOutputPort())
+        mapper.setInputData(polydata)
 
         const actor = vtkActor.newInstance()
         actor.setMapper(mapper)
 
         actor.getProperty().setColor(...color)
         actor.getProperty().setOpacity(0.35)
+        actor.getProperty().setLighting(false)
 
-        return { plane, actor }
+        return { actor, points }
     }
 
     /**
@@ -221,64 +240,56 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         const axialPoint1 = getCalculatedPoint1(axialCoordinate, row, col, width, height)
         const axialPoint2 = getCalculatedPoint2(axialCoordinate, row, col, width, height)
         const axialColor = [1,0,0]
-        const { actor: axialActor, plane: axialPlane } = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, axialColor)
-        axialActor.setScale([-1,1,1])
+        const { actor: axialActor, points: axialPoints } = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, axialColor)
         axialActorRef.current = axialActor
-        axialPlaneRef.current = axialPlane
+        axialPointsRef.current = axialPoints
         renderer.addActor(axialActor)
 
         const coronalOrigin = getCalculatedOrigin(center, row, normal, width, depth)
         const coronalPoint1 = getCalculatedPoint1(center, row, normal, width, depth)
         const coronalPoint2 = getCalculatedPoint2(center, row, normal, width, depth)
         const coronalColor = [0,1,0]
-        const { actor: coronalActor, plane: coronalPlane } = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, coronalColor)
+        const { actor: coronalActor, points: coronalPoints } = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, coronalColor)
         renderer.addActor(coronalActor)
 
         const sagittalOrigin = getCalculatedOrigin(center, col, normal, height, depth)
         const sagittalPoint1 = getCalculatedPoint1(center, col, normal, height, depth)
         const sagittalPoint2 = getCalculatedPoint2(center, col, normal, height, depth)
         const sagittalColor = [0,0,1]
-        const { actor: sagittalActor, plane: sagittalPlane } = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, sagittalColor)
+        const { actor: sagittalActor, points: sagittalPoints } = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, sagittalColor)
         renderer.addActor(sagittalActor)
 
         viewport.render()
 
-        dataRef.current.center = center
-        dataRef.current.spacing2 = spacing
-        dataRef.current.row = row
-        dataRef.current.col = col
-        dataRef.current.width = width
-        dataRef.current.height = height
-        dataRef.current.zMin = bounds[4]
+        dataRef.current = {
+            center, row, col, normal,
+            width, height, depth,
+            spacing2: spacing,
+            zMin: bounds[4],
+            zMax: bounds[5],
+            sliceCount: dims[2]
+        }
     }
 
     const updateAxialPlane = (viewport: any, index: number) => {
-        const plane = axialPlaneRef.current!
-        axialActorRef.current!.getProperty().setLighting(false)
+        const { zMax, spacing2 } = dataRef.current
 
-        const { firstSliceZ, spacing2, center, row, col, width, height } = dataRef.current!
+        // plane을 처음 생성할 때 기준 z 위치
+        const initialZ = zMax
 
-        const z = firstSliceZ - index * spacing2[2]
+        // 현재 slice index에 따라 이동할 z offset
+        const zOffset = -index * spacing2[2]
 
-        const coordinate = [center[0], center[1], z]
+        // actor의 절대 z 위치는 initialZ + zOffset
+        axialActorRef.current.setPosition(0, 0, zOffset)
 
-        const origin = getCalculatedOrigin(coordinate, row, col, width, height)
-        const p1 = getCalculatedPoint1(coordinate, row, col, width, height)
-        const p2 = getCalculatedPoint2(coordinate, row, col, width, height)
-
-        plane.setOrigin(...origin)
-        plane.setPoint1(...p1)
-        plane.setPoint2(...p2)
-
-        console.log("plane origin", plane.getOrigin())
-        console.log("plane p1", plane.getPoint1())
-        console.log("plane p2", plane.getPoint2())
-
-        plane.modified()
-        axialActorRef.current!.getMapper().modified()
-        axialActorRef.current!.modified()
+        // VTK 렌더러에 변경 알리기
         viewport.getRenderer().resetCameraClippingRange()
         viewport.render()
+
+        console.log(
+            `Axial plane updated: index=${index}, zOffset=${zOffset}, currentZ=${initialZ + zOffset}`
+        )
     }
 
     useEffect(() => {
@@ -297,6 +308,8 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 initializeCamera(viewport, actor)
                 initializePlanes(volumeId, viewport)
                 setIsInitialized(true)
+
+                console.log("actor count", viewport.getRenderer().getActors().length)
             }
         })()
 
