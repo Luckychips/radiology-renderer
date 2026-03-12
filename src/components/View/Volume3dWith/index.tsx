@@ -16,7 +16,7 @@ interface Props {
     imageIds: string[]
 }
 
-export default function Volume3D({ cornerstone, renderingEngine, toolGroup, viewportId, imageIds }: Props) {
+export default function Volume3DWith({ cornerstone, renderingEngine, toolGroup, viewportId, imageIds }: Props) {
     const { axialCurrentImageStackIndex } = useViewerStore()
     const elementRef = useRef<HTMLDivElement>(null)
     const dataRef = useRef<any>({})
@@ -90,9 +90,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             rowCosines[2] * colCosines[0] - rowCosines[0] * colCosines[2],
             rowCosines[0] * colCosines[1] - rowCosines[1] * colCosines[0],
         ]
-        console.log('row : ', rowCosines)
-        console.log('col : ', colCosines)
-        console.log('normal : ', sliceNormal)
         const distance = 1500
         const cameraPosition = [
             firstSlicePosition[0] + sliceNormal[0] * distance,
@@ -215,7 +212,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             (bounds[2] + bounds[3]) / 2,
             (bounds[4] + bounds[5]) / 2
         ]
-        console.log("bounds", bounds)
         const dims = imageData.getDimensions()
         const spacing = imageData.getSpacing()
         const width = dims[0] * spacing[0]
@@ -269,34 +265,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         }
     }
 
-    const updateAxialPlane = (viewport: any, index: number) => {
-        const { zMax, spacing2 } = dataRef.current
-
-        // plane을 처음 생성할 때 기준 z 위치
-        const initialZ = zMax
-
-        // 현재 slice index에 따라 이동할 z offset
-        const zOffset = -index * spacing2[2]
-
-        // actor의 절대 z 위치는 initialZ + zOffset
-        axialActorRef.current.setPosition(0, 0, zOffset)
-
-        // VTK 렌더러에 변경 알리기
-        viewport.getRenderer().resetCameraClippingRange()
-        viewport.render()
-
-        console.log(
-            `Axial plane updated: index=${index}, zOffset=${zOffset}, currentZ=${initialZ + zOffset}`
-        )
-    }
-
-    useEffect(() => {
-        if (isInitialized && axialCurrentImageStackIndex >= 0) {
-            const viewport: any = renderingEngine.getViewport(viewportId)
-            updateAxialPlane(viewport, axialCurrentImageStackIndex)
-        }
-    }, [isInitialized, axialCurrentImageStackIndex]);
-
     useEffect(() => {
         (async () => {
             if (cornerstone && imageIds.length) {
@@ -306,8 +274,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 initializeCamera(viewport, actor)
                 initializePlanes(volumeId, viewport)
                 setIsInitialized(true)
-
-                console.log("actor count", viewport.getRenderer().getActors().length)
             }
         })()
 
@@ -315,6 +281,49 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             toolGroup.removeViewports(viewportId, renderingEngine.id)
         }
     }, [cornerstone, imageIds])
+
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        const sliceIndex = axialCurrentImageStackIndex;
+
+        // imagePlane metadata
+        const imagePlane = cornerstone.metaData.get('imagePlaneModule', imageIds[sliceIndex]);
+        if (!imagePlane) return;
+
+        const orientation = imagePlane.imageOrientationPatient;
+        const row = orientation.slice(0,3);
+        const col = orientation.slice(3,6);
+        const coordinate = imagePlane.imagePositionPatient;
+
+        // width, height 계산 (bounds 등)
+        const imageData = axialActorRef.current.getMapper().getInputData();
+        const bounds = imageData.getBounds();
+        const width = bounds[1] - bounds[0];
+        const height = bounds[3] - bounds[2];
+        const center = [
+            (bounds[0] + bounds[1]) / 2,
+            (bounds[2] + bounds[3]) / 2,
+            (bounds[4] + bounds[5]) / 2
+        ]
+
+        const newCoordinate = [center[0], center[1], coordinate[2]]
+        const newOrigin = getCalculatedOrigin(newCoordinate, row, col, width, height);
+        const newP1 = getCalculatedPoint1(newCoordinate, row, col, width, height);
+        const newP2 = getCalculatedPoint2(newCoordinate, row, col, width, height);
+
+        // **여기가 핵심: slice 이동 시 plane actor 재생성**
+        const viewport = renderingEngine.getViewport(viewportId);
+        const renderer = viewport.getRenderer();
+
+        renderer.removeActor(axialActorRef.current);
+        const { actor: newActor, points: newPoints } = createPlaneActor(newOrigin, newP1, newP2, [1,0,0]);
+        axialActorRef.current = newActor;
+        axialPointsRef.current = newPoints;
+        renderer.addActor(newActor);
+
+        viewport.render();
+    }, [axialCurrentImageStackIndex, isInitialized]);
 
     return (
         <section className="relative w-[50vw] h-full">

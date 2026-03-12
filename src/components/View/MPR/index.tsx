@@ -1,7 +1,7 @@
 import { type ChangeEvent, useState, useEffect, useRef } from 'react'
 import { RenderingEngine } from '@cornerstonejs/core'
 import { Types, ToolGroupManager, PanTool, ZoomTool, TrackballRotateTool } from '@cornerstonejs/tools'
-import { Axial, Coronal, Sagittal, Volume3d } from '@/components'
+import { Axial, Coronal, Sagittal, Volume3dWith } from '@/components'
 import { setupCornerstone } from '@/cores/setup'
 
 export default function MPR() {
@@ -110,7 +110,7 @@ export default function MPR() {
                             cornerstoneTools={ct}
                             imageIds={imageIds}
                         />
-                        <Volume3d
+                        <Volume3dWith
                             renderingEngine={renderingEngine}
                             toolGroup={toolGroup}
                             cornerstone={cs}
