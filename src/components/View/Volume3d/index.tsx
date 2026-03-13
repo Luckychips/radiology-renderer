@@ -16,12 +16,15 @@ interface Props {
     imageIds: string[]
 }
 
-export default function Volume3D({ cornerstone, renderingEngine, toolGroup, viewportId, imageIds }: Props) {
-    const { axialCurrentImageStackIndex } = useViewerStore()
+export default function Volume3d({ cornerstone, renderingEngine, toolGroup, viewportId, imageIds }: Props) {
+    const { axialCurrentImageStackIndex, coronalCurrentImageStackIndex, sagittalCurrentImageStackIndex } = useViewerStore()
     const elementRef = useRef<HTMLDivElement>(null)
-    const dataRef = useRef<any>({})
     const axialActorRef = useRef<any>(null)
     const axialPointsRef = useRef<any>(null)
+    const coronalActorRef = useRef<any>(null)
+    const coronalPointsRef = useRef<any>(null)
+    const sagittalActorRef = useRef<any>(null)
+    const sagittalPointsRef = useRef<any>(null)
     const [isInitialized, setIsInitialized] = useState(false)
 
     const initializeVolume = async () => {
@@ -90,10 +93,7 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             rowCosines[2] * colCosines[0] - rowCosines[0] * colCosines[2],
             rowCosines[0] * colCosines[1] - rowCosines[1] * colCosines[0],
         ]
-        console.log('row : ', rowCosines)
-        console.log('col : ', colCosines)
-        console.log('normal : ', sliceNormal)
-        const distance = 1500
+        const distance = 1
         const cameraPosition = [
             firstSlicePosition[0] + sliceNormal[0] * distance,
             firstSlicePosition[1] + sliceNormal[1] * distance,
@@ -109,7 +109,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         viewport.resetCamera()
         viewport.render()
 
-        dataRef.current.firstSliceZ = firstSlicePosition[2]
         return { firstSlicePosition, sliceNormal, colCosines, rowCosines }
     }
 
@@ -215,7 +214,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             (bounds[2] + bounds[3]) / 2,
             (bounds[4] + bounds[5]) / 2
         ]
-        console.log("bounds", bounds)
         const dims = imageData.getDimensions()
         const spacing = imageData.getSpacing()
         const width = dims[0] * spacing[0]
@@ -248,6 +246,8 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         const coronalPoint2 = getCalculatedPoint2(center, row, normal, width, depth)
         const coronalColor = [0,1,0]
         const { actor: coronalActor, points: coronalPoints } = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, coronalColor)
+        coronalActorRef.current = coronalActor
+        coronalPointsRef.current = coronalPoints
         renderer.addActor(coronalActor)
 
         const sagittalOrigin = getCalculatedOrigin(center, col, normal, height, depth)
@@ -255,47 +255,11 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
         const sagittalPoint2 = getCalculatedPoint2(center, col, normal, height, depth)
         const sagittalColor = [0,0,1]
         const { actor: sagittalActor, points: sagittalPoints } = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, sagittalColor)
+        sagittalActorRef.current = sagittalActor
+        sagittalPointsRef.current = sagittalPoints
         renderer.addActor(sagittalActor)
-
         viewport.render()
-
-        dataRef.current = {
-            center, row, col, normal,
-            width, height, depth,
-            spacing2: spacing,
-            zMin: bounds[4],
-            zMax: bounds[5],
-            sliceCount: dims[2]
-        }
     }
-
-    const updateAxialPlane = (viewport: any, index: number) => {
-        const { zMax, spacing2 } = dataRef.current
-
-        // plane을 처음 생성할 때 기준 z 위치
-        const initialZ = zMax
-
-        // 현재 slice index에 따라 이동할 z offset
-        const zOffset = -index * spacing2[2]
-
-        // actor의 절대 z 위치는 initialZ + zOffset
-        axialActorRef.current.setPosition(0, 0, zOffset)
-
-        // VTK 렌더러에 변경 알리기
-        viewport.getRenderer().resetCameraClippingRange()
-        viewport.render()
-
-        console.log(
-            `Axial plane updated: index=${index}, zOffset=${zOffset}, currentZ=${initialZ + zOffset}`
-        )
-    }
-
-    useEffect(() => {
-        if (isInitialized && axialCurrentImageStackIndex >= 0) {
-            const viewport: any = renderingEngine.getViewport(viewportId)
-            updateAxialPlane(viewport, axialCurrentImageStackIndex)
-        }
-    }, [isInitialized, axialCurrentImageStackIndex]);
 
     useEffect(() => {
         (async () => {
@@ -306,8 +270,6 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
                 initializeCamera(viewport, actor)
                 initializePlanes(volumeId, viewport)
                 setIsInitialized(true)
-
-                console.log("actor count", viewport.getRenderer().getActors().length)
             }
         })()
 
@@ -315,6 +277,115 @@ export default function Volume3D({ cornerstone, renderingEngine, toolGroup, view
             toolGroup.removeViewports(viewportId, renderingEngine.id)
         }
     }, [cornerstone, imageIds])
+
+    useEffect(() => {
+        if (!isInitialized) return
+        const imagePlane = cornerstone.metaData.get('imagePlaneModule', imageIds[axialCurrentImageStackIndex])
+        if (imagePlane) {
+            const orientation = imagePlane.imageOrientationPatient
+            const row = orientation.slice(0,3)
+            const col = orientation.slice(3,6)
+            const coordinate = imagePlane.imagePositionPatient
+            const imageData = axialActorRef.current.getMapper().getInputData()
+            const bounds = imageData.getBounds()
+            const width = bounds[1] - bounds[0]
+            const height = bounds[3] - bounds[2]
+            const center = [
+                (bounds[0] + bounds[1]) / 2,
+                (bounds[2] + bounds[3]) / 2,
+                (bounds[4] + bounds[5]) / 2
+            ]
+
+            const newCoordinate = [center[0], center[1], coordinate[2]]
+            const newOrigin = getCalculatedOrigin(newCoordinate, row, col, width, height)
+            const newP1 = getCalculatedPoint1(newCoordinate, row, col, width, height)
+            const newP2 = getCalculatedPoint2(newCoordinate, row, col, width, height)
+            const viewport = renderingEngine.getViewport(viewportId)
+            const renderer = viewport.getRenderer()
+            renderer.removeActor(axialActorRef.current)
+            const { actor: newActor, points: newPoints } = createPlaneActor(newOrigin, newP1, newP2, [1,0,0])
+            axialActorRef.current = newActor
+            axialPointsRef.current = newPoints
+            renderer.addActor(newActor)
+            viewport.render()
+        }
+    }, [isInitialized, axialCurrentImageStackIndex])
+
+    useEffect(() => {
+        if (!isInitialized) return;
+        const viewport = renderingEngine.getViewport(viewportId)
+        const renderer = viewport.getRenderer()
+        const volumeActor = viewport.getActors()[0].actor
+        const imageData = volumeActor.getMapper().getInputData()
+        const spacing = imageData.getSpacing()
+        const dims = imageData.getDimensions()
+        const bounds = imageData.getBounds()
+        const center = [
+            (bounds[0] + bounds[1]) / 2,
+            (bounds[2] + bounds[3]) / 2,
+            (bounds[4] + bounds[5]) / 2
+        ]
+
+        const centerIndex = Math.floor(dims[1] / 2)
+        const offset = (coronalCurrentImageStackIndex - centerIndex) * spacing[1]
+        const newCoordinate = [
+            center[0],
+            center[1] + offset,
+            center[2]
+        ]
+
+        const row = [1,0,0]
+        const normal = [0,0,1]
+        const width = bounds[1] - bounds[0]
+        const depth = bounds[5] - bounds[4]
+
+        const newOrigin = getCalculatedOrigin(newCoordinate, row, normal, width, depth)
+        const newP1 = getCalculatedPoint1(newCoordinate, row, normal, width, depth)
+        const newP2 = getCalculatedPoint2(newCoordinate, row, normal, width, depth)
+
+        renderer.removeActor(coronalActorRef.current)
+        const { actor } = createPlaneActor(newOrigin, newP1, newP2, [0,1,0])
+        coronalActorRef.current = actor
+        renderer.addActor(actor)
+        viewport.render()
+    }, [isInitialized, coronalCurrentImageStackIndex])
+
+    useEffect(() => {
+        if (!isInitialized) return
+        const viewport = renderingEngine.getViewport(viewportId)
+        const renderer = viewport.getRenderer()
+        const volumeActor = viewport.getActors()[0].actor
+        const imageData = volumeActor.getMapper().getInputData()
+        const spacing = imageData.getSpacing()
+        const dims = imageData.getDimensions()
+        const bounds = imageData.getBounds()
+        const center = [
+            (bounds[0] + bounds[1]) / 2,
+            (bounds[2] + bounds[3]) / 2,
+            (bounds[4] + bounds[5]) / 2,
+        ]
+        const centerIndex = Math.floor(dims[0] / 2)
+        const offset = (sagittalCurrentImageStackIndex - centerIndex) * spacing[0]
+        const newCoordinate = [
+            center[0] + offset,
+            center[1],
+            center[2],
+        ]
+        const col = [0, 1, 0]
+        const normal = [0, 0, 1]
+        const height = bounds[3] - bounds[2]
+        const depth = bounds[5] - bounds[4]
+        const newOrigin = getCalculatedOrigin(newCoordinate, col, normal, height, depth)
+        const newP1 = getCalculatedPoint1(newCoordinate, col, normal, height, depth)
+        const newP2 = getCalculatedPoint2(newCoordinate, col, normal, height, depth)
+
+        renderer.removeActor(sagittalActorRef.current)
+        const { actor: newActor, points: newPoints } = createPlaneActor(newOrigin, newP1, newP2, [0, 0, 1])
+        sagittalActorRef.current = newActor
+        sagittalPointsRef.current = newPoints
+        renderer.addActor(newActor)
+        viewport.render()
+    }, [isInitialized, sagittalCurrentImageStackIndex])
 
     return (
         <section className="relative w-[50vw] h-full">
