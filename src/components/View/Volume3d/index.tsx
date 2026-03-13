@@ -261,6 +261,31 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
         viewport.render()
     }
 
+    const getExportMetaData = (imageData: any) => {
+        const newBounds = imageData.getBounds()
+        const data: any = {
+            bounds: newBounds,
+            center: [
+                (newBounds[0] + newBounds[1]) / 2,
+                (newBounds[2] + newBounds[3]) / 2,
+                (newBounds[4] + newBounds[5]) / 2
+            ],
+            width: newBounds[1] - newBounds[0],
+            height: newBounds[3] - newBounds[2],
+            depth: newBounds[5] - newBounds[4],
+        }
+
+        if (imageData.hasOwnProperty('getSpacing')) {
+            data.spacing2 = imageData.getSpacing()
+        }
+
+        if (imageData.hasOwnProperty('getDimensions')) {
+            data.dims = imageData.getDimensions()
+        }
+
+        return data
+    }
+
     useEffect(() => {
         (async () => {
             if (cornerstone && imageIds.length) {
@@ -287,15 +312,7 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
             const col = orientation.slice(3,6)
             const coordinate = imagePlane.imagePositionPatient
             const imageData = axialActorRef.current.getMapper().getInputData()
-            const bounds = imageData.getBounds()
-            const width = bounds[1] - bounds[0]
-            const height = bounds[3] - bounds[2]
-            const center = [
-                (bounds[0] + bounds[1]) / 2,
-                (bounds[2] + bounds[3]) / 2,
-                (bounds[4] + bounds[5]) / 2
-            ]
-
+            const { width, height, center } = getExportMetaData(imageData)
             const newCoordinate = [center[0], center[1], coordinate[2]]
             const newOrigin = getCalculatedOrigin(newCoordinate, row, col, width, height)
             const newP1 = getCalculatedPoint1(newCoordinate, row, col, width, height)
@@ -317,28 +334,12 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
         const renderer = viewport.getRenderer()
         const volumeActor = viewport.getActors()[0].actor
         const imageData = volumeActor.getMapper().getInputData()
-        const spacing = imageData.getSpacing()
-        const dims = imageData.getDimensions()
-        const bounds = imageData.getBounds()
-        const center = [
-            (bounds[0] + bounds[1]) / 2,
-            (bounds[2] + bounds[3]) / 2,
-            (bounds[4] + bounds[5]) / 2
-        ]
-
+        const { spacing2, dims, center, width, depth } = getExportMetaData(imageData)
         const centerIndex = Math.floor(dims[1] / 2)
-        const offset = (coronalCurrentImageStackIndex - centerIndex) * spacing[1]
-        const newCoordinate = [
-            center[0],
-            center[1] + offset,
-            center[2]
-        ]
-
+        const offset = (coronalCurrentImageStackIndex - centerIndex) * spacing2[1]
+        const newCoordinate = [center[0], center[1] + offset, center[2]]
         const row = [1,0,0]
         const normal = [0,0,1]
-        const width = bounds[1] - bounds[0]
-        const depth = bounds[5] - bounds[4]
-
         const newOrigin = getCalculatedOrigin(newCoordinate, row, normal, width, depth)
         const newP1 = getCalculatedPoint1(newCoordinate, row, normal, width, depth)
         const newP2 = getCalculatedPoint2(newCoordinate, row, normal, width, depth)
@@ -356,25 +357,12 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
         const renderer = viewport.getRenderer()
         const volumeActor = viewport.getActors()[0].actor
         const imageData = volumeActor.getMapper().getInputData()
-        const spacing = imageData.getSpacing()
-        const dims = imageData.getDimensions()
-        const bounds = imageData.getBounds()
-        const center = [
-            (bounds[0] + bounds[1]) / 2,
-            (bounds[2] + bounds[3]) / 2,
-            (bounds[4] + bounds[5]) / 2,
-        ]
+        const { spacing2, dims, center, height, depth } = getExportMetaData(imageData)
         const centerIndex = Math.floor(dims[0] / 2)
-        const offset = (sagittalCurrentImageStackIndex - centerIndex) * spacing[0]
-        const newCoordinate = [
-            center[0] + offset,
-            center[1],
-            center[2],
-        ]
+        const offset = (sagittalCurrentImageStackIndex - centerIndex) * spacing2[0]
+        const newCoordinate = [center[0] + offset, center[1], center[2]]
         const col = [0, 1, 0]
         const normal = [0, 0, 1]
-        const height = bounds[3] - bounds[2]
-        const depth = bounds[5] - bounds[4]
         const newOrigin = getCalculatedOrigin(newCoordinate, col, normal, height, depth)
         const newP1 = getCalculatedPoint1(newCoordinate, col, normal, height, depth)
         const newP2 = getCalculatedPoint2(newCoordinate, col, normal, height, depth)
