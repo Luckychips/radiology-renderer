@@ -6,6 +6,7 @@ import vtkPoints from '@kitware/vtk.js/Common/Core/Points'
 import vtkCellArray from '@kitware/vtk.js/Common/Core/CellArray'
 import vtkMapper from '@kitware/vtk.js/Rendering/Core/Mapper'
 import vtkActor from '@kitware/vtk.js/Rendering/Core/Actor'
+import { data, getCenterFromBounds, getCalculatedOrigin, getCalculatedPoint1, getCalculatedPoint2 } from '@/cores/xyz.ts'
 import { useViewerStore } from '@/stores/mpr'
 
 interface Props {
@@ -153,67 +154,13 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
         return { actor, points }
     }
 
-    /**
-     *
-     * @param coordinate  - 3d volume center position (x, y, z)
-     * @param vector1     - direction vector (axial,coronal:row, sagittal:col)
-     * @param vector2     - direction vector (axial:col, coronal,sagittal:normal)
-     * @param horizontal  - volume size (axial,coronal:width, sagittal:height)
-     * @param vertical    - volume size (axial:height, coronal,sagittal:depth)
-     */
-    const getCalculatedOrigin = (
-        coordinate: number[],
-        vector1: number[],
-        vector2: number[],
-        horizontal: number,
-        vertical: number,
-    ) => {
-        return [
-            coordinate[0] - vector1[0] * horizontal / 2 - vector2[0] * vertical / 2,
-            coordinate[1] - vector1[1] * horizontal / 2 - vector2[1] * vertical / 2,
-            coordinate[2] - vector1[2] * horizontal / 2 - vector2[2] * vertical / 2,
-        ]
-    }
-
-    const getCalculatedPoint1 = (
-        coordinate: number[],
-        vector1: number[],
-        vector2: number[],
-        horizontal: number,
-        vertical: number,
-    ) => {
-        return [
-            coordinate[0] + vector1[0] * horizontal / 2 - vector2[0] * vertical / 2,
-            coordinate[1] + vector1[1] * horizontal / 2 - vector2[1] * vertical / 2,
-            coordinate[2] + vector1[2] * horizontal / 2 - vector2[2] * vertical / 2,
-        ]
-    }
-
-    const getCalculatedPoint2 = (
-        coordinate: number[],
-        vector1: number[],
-        vector2: number[],
-        horizontal: number,
-        vertical: number,
-    ) => {
-        return [
-            coordinate[0] - vector1[0] * horizontal / 2 + vector2[0] * vertical / 2,
-            coordinate[1] - vector1[1] * horizontal / 2 + vector2[1] * vertical / 2,
-            coordinate[2] - vector1[2] * horizontal / 2 + vector2[2] * vertical / 2,
-        ]
-    }
-
     const initializePlanes = (volumeId: string, viewport: any) => {
         const volumeActor = viewport.getActors().find((a: any)=> {
             return a.referencedId === volumeId
         }).actor
         const imageData = volumeActor.getMapper().getInputData()
         const bounds = imageData.getBounds()
-        const center = [
-            (bounds[0] + bounds[1]) / 2,
-            (bounds[2] + bounds[3]) / 2,
-            (bounds[4] + bounds[5]) / 2
-        ]
+        const center = getCenterFromBounds(bounds)
         const dims = imageData.getDimensions()
         const spacing = imageData.getSpacing()
         const width = dims[0] * spacing[0]
@@ -235,8 +182,7 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
         const axialOrigin = getCalculatedOrigin(axialCoordinate, row, col, width, height)
         const axialPoint1 = getCalculatedPoint1(axialCoordinate, row, col, width, height)
         const axialPoint2 = getCalculatedPoint2(axialCoordinate, row, col, width, height)
-        const axialColor = [1,0,0]
-        const { actor: axialActor, points: axialPoints } = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, axialColor)
+        const { actor: axialActor, points: axialPoints } = createPlaneActor(axialOrigin, axialPoint1, axialPoint2, data.appearance.color.red)
         axialActorRef.current = axialActor
         axialPointsRef.current = axialPoints
         renderer.addActor(axialActor)
@@ -244,8 +190,7 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
         const coronalOrigin = getCalculatedOrigin(center, row, normal, width, depth)
         const coronalPoint1 = getCalculatedPoint1(center, row, normal, width, depth)
         const coronalPoint2 = getCalculatedPoint2(center, row, normal, width, depth)
-        const coronalColor = [0,1,0]
-        const { actor: coronalActor, points: coronalPoints } = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, coronalColor)
+        const { actor: coronalActor, points: coronalPoints } = createPlaneActor(coronalOrigin, coronalPoint1, coronalPoint2, data.appearance.color.green)
         coronalActorRef.current = coronalActor
         coronalPointsRef.current = coronalPoints
         renderer.addActor(coronalActor)
@@ -253,23 +198,27 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
         const sagittalOrigin = getCalculatedOrigin(center, col, normal, height, depth)
         const sagittalPoint1 = getCalculatedPoint1(center, col, normal, height, depth)
         const sagittalPoint2 = getCalculatedPoint2(center, col, normal, height, depth)
-        const sagittalColor = [0,0,1]
-        const { actor: sagittalActor, points: sagittalPoints } = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, sagittalColor)
+        const { actor: sagittalActor, points: sagittalPoints } = createPlaneActor(sagittalOrigin, sagittalPoint1, sagittalPoint2, data.appearance.color.blue)
         sagittalActorRef.current = sagittalActor
         sagittalPointsRef.current = sagittalPoints
         renderer.addActor(sagittalActor)
         viewport.render()
     }
 
-    const getExportMetaData = (imageData: any) => {
+    const getRenderingPipelines = (viewportId: string) => {
+        const viewport = renderingEngine.getViewport(viewportId)
+        const renderer = viewport.getRenderer()
+        const volumeActor = viewport.getActors()[0].actor
+        const imageData = volumeActor.getMapper().getInputData()
+
+        return { viewport, renderer, imageData }
+    }
+
+    const getMetaData = (imageData: any) => {
         const newBounds = imageData.getBounds()
         const data: any = {
             bounds: newBounds,
-            center: [
-                (newBounds[0] + newBounds[1]) / 2,
-                (newBounds[2] + newBounds[3]) / 2,
-                (newBounds[4] + newBounds[5]) / 2
-            ],
+            center: getCenterFromBounds(newBounds),
             width: newBounds[1] - newBounds[0],
             height: newBounds[3] - newBounds[2],
             depth: newBounds[5] - newBounds[4],
@@ -304,75 +253,72 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
     }, [cornerstone, imageIds])
 
     useEffect(() => {
-        if (!isInitialized) return
-        const imagePlane = cornerstone.metaData.get('imagePlaneModule', imageIds[axialCurrentImageStackIndex])
-        if (imagePlane) {
-            const orientation = imagePlane.imageOrientationPatient
-            const row = orientation.slice(0,3)
-            const col = orientation.slice(3,6)
-            const coordinate = imagePlane.imagePositionPatient
-            const imageData = axialActorRef.current.getMapper().getInputData()
-            const { width, height, center } = getExportMetaData(imageData)
-            const newCoordinate = [center[0], center[1], coordinate[2]]
-            const newOrigin = getCalculatedOrigin(newCoordinate, row, col, width, height)
-            const newP1 = getCalculatedPoint1(newCoordinate, row, col, width, height)
-            const newP2 = getCalculatedPoint2(newCoordinate, row, col, width, height)
-            const viewport = renderingEngine.getViewport(viewportId)
-            const renderer = viewport.getRenderer()
-            renderer.removeActor(axialActorRef.current)
-            const { actor: newActor, points: newPoints } = createPlaneActor(newOrigin, newP1, newP2, [1,0,0])
-            axialActorRef.current = newActor
-            axialPointsRef.current = newPoints
-            renderer.addActor(newActor)
-            viewport.render()
+        if (isInitialized) {
+            const imagePlane = cornerstone.metaData.get('imagePlaneModule', imageIds[axialCurrentImageStackIndex])
+            if (imagePlane) {
+                const coordinate = imagePlane.imagePositionPatient
+                const orientation = imagePlane.imageOrientationPatient
+                const imageData = axialActorRef.current.getMapper().getInputData()
+                const { width, height, center } = getMetaData(imageData)
+                const newCoordinate = [center[0], center[1], coordinate[2]]
+                const row = orientation.slice(0,3)
+                const col = orientation.slice(3,6)
+                const newOrigin = getCalculatedOrigin(newCoordinate, row, col, width, height)
+                const newP1 = getCalculatedPoint1(newCoordinate, row, col, width, height)
+                const newP2 = getCalculatedPoint2(newCoordinate, row, col, width, height)
+                const viewport = renderingEngine.getViewport(viewportId)
+                const renderer = viewport.getRenderer()
+                renderer.removeActor(axialActorRef.current)
+                const { actor: newActor, points: newPoints } = createPlaneActor(newOrigin, newP1, newP2, data.appearance.color.red)
+                axialActorRef.current = newActor
+                axialPointsRef.current = newPoints
+                renderer.addActor(newActor)
+                viewport.render()
+            }
         }
     }, [isInitialized, axialCurrentImageStackIndex])
 
     useEffect(() => {
-        if (!isInitialized) return;
-        const viewport = renderingEngine.getViewport(viewportId)
-        const renderer = viewport.getRenderer()
-        const volumeActor = viewport.getActors()[0].actor
-        const imageData = volumeActor.getMapper().getInputData()
-        const { spacing2, dims, center, width, depth } = getExportMetaData(imageData)
-        const centerIndex = Math.floor(dims[1] / 2)
-        const offset = (coronalCurrentImageStackIndex - centerIndex) * spacing2[1]
-        const newCoordinate = [center[0], center[1] + offset, center[2]]
-        const row = [1,0,0]
-        const normal = [0,0,1]
-        const newOrigin = getCalculatedOrigin(newCoordinate, row, normal, width, depth)
-        const newP1 = getCalculatedPoint1(newCoordinate, row, normal, width, depth)
-        const newP2 = getCalculatedPoint2(newCoordinate, row, normal, width, depth)
+        if (isInitialized) {
+            const { viewport, renderer, imageData } = getRenderingPipelines(viewportId)
+            const { spacing2, dims, center, width, depth } = getMetaData(imageData)
+            const centerIndex = Math.floor(dims[1] / 2)
+            const offset = (coronalCurrentImageStackIndex - centerIndex) * spacing2[1]
+            const newCoordinate = [center[0], center[1] + offset, center[2]]
+            const row = data.orientation.row
+            const normal = data.orientation.normal
+            const newOrigin = getCalculatedOrigin(newCoordinate, row, normal, width, depth)
+            const newP1 = getCalculatedPoint1(newCoordinate, row, normal, width, depth)
+            const newP2 = getCalculatedPoint2(newCoordinate, row, normal, width, depth)
 
-        renderer.removeActor(coronalActorRef.current)
-        const { actor } = createPlaneActor(newOrigin, newP1, newP2, [0,1,0])
-        coronalActorRef.current = actor
-        renderer.addActor(actor)
-        viewport.render()
+            renderer.removeActor(coronalActorRef.current)
+            const { actor } = createPlaneActor(newOrigin, newP1, newP2, data.appearance.color.green)
+            coronalActorRef.current = actor
+            renderer.addActor(actor)
+            viewport.render()
+        }
     }, [isInitialized, coronalCurrentImageStackIndex])
 
     useEffect(() => {
-        if (!isInitialized) return
-        const viewport = renderingEngine.getViewport(viewportId)
-        const renderer = viewport.getRenderer()
-        const volumeActor = viewport.getActors()[0].actor
-        const imageData = volumeActor.getMapper().getInputData()
-        const { spacing2, dims, center, height, depth } = getExportMetaData(imageData)
-        const centerIndex = Math.floor(dims[0] / 2)
-        const offset = (sagittalCurrentImageStackIndex - centerIndex) * spacing2[0]
-        const newCoordinate = [center[0] + offset, center[1], center[2]]
-        const col = [0, 1, 0]
-        const normal = [0, 0, 1]
-        const newOrigin = getCalculatedOrigin(newCoordinate, col, normal, height, depth)
-        const newP1 = getCalculatedPoint1(newCoordinate, col, normal, height, depth)
-        const newP2 = getCalculatedPoint2(newCoordinate, col, normal, height, depth)
+        if (isInitialized) {
+            const { viewport, renderer, imageData } = getRenderingPipelines(viewportId)
+            const { spacing2, dims, center, height, depth } = getMetaData(imageData)
+            const centerIndex = Math.floor(dims[0] / 2)
+            const offset = (sagittalCurrentImageStackIndex - centerIndex) * spacing2[0]
+            const newCoordinate = [center[0] + offset, center[1], center[2]]
+            const col = data.orientation.col
+            const normal = data.orientation.normal
+            const newOrigin = getCalculatedOrigin(newCoordinate, col, normal, height, depth)
+            const newP1 = getCalculatedPoint1(newCoordinate, col, normal, height, depth)
+            const newP2 = getCalculatedPoint2(newCoordinate, col, normal, height, depth)
 
-        renderer.removeActor(sagittalActorRef.current)
-        const { actor: newActor, points: newPoints } = createPlaneActor(newOrigin, newP1, newP2, [0, 0, 1])
-        sagittalActorRef.current = newActor
-        sagittalPointsRef.current = newPoints
-        renderer.addActor(newActor)
-        viewport.render()
+            renderer.removeActor(sagittalActorRef.current)
+            const { actor: newActor, points: newPoints } = createPlaneActor(newOrigin, newP1, newP2, data.appearance.color.blue)
+            sagittalActorRef.current = newActor
+            sagittalPointsRef.current = newPoints
+            renderer.addActor(newActor)
+            viewport.render()
+        }
     }, [isInitialized, sagittalCurrentImageStackIndex])
 
     return (
