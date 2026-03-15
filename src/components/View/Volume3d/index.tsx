@@ -55,7 +55,8 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
             [viewportId]
         )
         toolGroup.addViewport(viewportId, renderingEngine.id)
-        return { volume, volumeId }
+        const viewport: any = renderingEngine.getViewport(viewportId)
+        return { volume, volumeId, viewport }
     }
 
     const initializeModel = (viewport: any) => {
@@ -213,6 +214,7 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
     }
 
     const getMetaData = (imageData: any) => {
+        console.log(imageData)
         const newBounds = imageData.getBounds()
         const data: any = {
             bounds: newBounds,
@@ -236,8 +238,7 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
     useEffect(() => {
         (async () => {
             if (cornerstone && imageIds.length) {
-                const viewport: any = renderingEngine.getViewport(viewportId)
-                const { volumeId } = await initializeVolume()
+                const { volumeId, viewport } = await initializeVolume()
                 const { actor } = initializeModel(viewport)
                 initializeCamera(viewport, actor)
                 initializePlanes(volumeId, viewport)
