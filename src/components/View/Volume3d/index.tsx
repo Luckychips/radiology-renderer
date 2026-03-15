@@ -109,8 +109,6 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
 
         viewport.resetCamera()
         viewport.render()
-
-        return { firstSlicePosition, sliceNormal, colCosines, rowCosines }
     }
 
     const createPlaneActor = (
@@ -238,8 +236,8 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
     useEffect(() => {
         (async () => {
             if (cornerstone && imageIds.length) {
-                const { volumeId } = await initializeVolume()
                 const viewport: any = renderingEngine.getViewport(viewportId)
+                const { volumeId } = await initializeVolume()
                 const { actor } = initializeModel(viewport)
                 initializeCamera(viewport, actor)
                 initializePlanes(volumeId, viewport)
