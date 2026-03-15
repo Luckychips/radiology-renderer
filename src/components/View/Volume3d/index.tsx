@@ -214,7 +214,6 @@ export default function Volume3d({ cornerstone, renderingEngine, toolGroup, view
     }
 
     const getMetaData = (imageData: any) => {
-        console.log(imageData)
         const newBounds = imageData.getBounds()
         const data: any = {
             bounds: newBounds,
