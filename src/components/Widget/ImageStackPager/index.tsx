@@ -17,12 +17,12 @@ export default function ImageStackPager({
             <div className="flex absolute z-1 right-[5px] bottom-[5px]">
                 <figure
                     className="p-2 cursor-pointer rounded-lg mr-1"
-                    style={{ backgroundColor: "white" }}
+                    style={{ backgroundColor: 'white' }}
                     onClick={() => {
                         if (currentImageStackIndex <= 0) return
                         const index = currentImageStackIndex - 1
-                        const max = Math.min(index, totalImageStackCount - 1)
-                        setCurrentImageStackIndex(max)
+                        const min = Math.min(index, totalImageStackCount - 1)
+                        setCurrentImageStackIndex(min)
                     }}>
                     <BaseIcon iconColor="black">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
@@ -30,7 +30,7 @@ export default function ImageStackPager({
                 </figure>
                 <figure
                     className="p-2 cursor-pointer rounded-lg"
-                    style={{backgroundColor: "white"}}
+                    style={{ backgroundColor: 'white' }}
                     onClick={() => {
                         if (currentImageStackIndex >= totalImageStackCount - 1) return
                         const index = currentImageStackIndex + 1
